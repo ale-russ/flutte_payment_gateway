@@ -1,0 +1,34 @@
+# Ignore files for Flutter app
+flutter_payment_gateway/.dart_tool/
+flutter_payment_gateway/.idea/
+flutter_payment_gateway/.vscode/
+flutter_payment_gateway/build/
+flutter_payment_gateway/pubspec.lock
+flutter_payment_gateway/.flutter-plugins
+flutter_payment_gateway/.flutter-plugins-dependencies
+flutter_payment_gateway/.packages
+flutter_payment_gateway/ios/Pods
+flutter_payment_gateway/ios/.symlinks
+flutter_payment_gateway/android/.gradle
+flutter_payment_gateway/android/local.properties
+flutter_payment_gateway/test/coverage/
+flutter_payment_gateway/flutter_export_environment.sh
+
+# Ignore files for Node.js server
+server/node_modules/
+server/.env
+server/package-lock.json
+server/dist/
+server/logs/
+server/npm-debug.log*
+server/yarn.lock
+
+# Common files to ignore
+*.log
+*.DS_Store
+*.swp
+*.iml
+*.lock
+.env
+.idea/
+.vscode/
