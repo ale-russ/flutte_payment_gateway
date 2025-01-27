@@ -42,37 +42,55 @@ app.post("/get-token", async (req, res) => {
 
 // handle payment requests
 app.post("/request-payment", async (req, res) => {
-  const { amount, currency, phone } = req.body;
+  const { amount, currency, payer } = req.body;
 
-  console.log("Headers: ", req.headers);
-  //   console.log("Body: ", req.body);
+  // Validate required fields
+  if (!amount || !currency || !payer) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  const body = {
+    amount: amount.toString(),
+    currency: currency,
+    externalId: "1234545",
+    payer: {
+      partyIdType: payer.payerType,
+      partyId: payer.partyId,
+    },
+    payerMessage: "Payment for service",
+    payeeNote: "Payment request",
+  };
 
   try {
+    // Log the request details for debugging
+    console.log("Request Headers:", req.headers);
+    console.log("Request Body:", body);
+
     const response = await axios.post(
-      `https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay`,
-      {
-        amount: amount.toString(),
-        currency: currency,
-        externalId: "1234545",
-        payer: {
-          partyIdType: "MSISDN",
-          partyId: phone,
-        },
-      },
+      `${MOMO_BASE_URL}/collection/v1_0/requesttopay`,
+      body,
       {
         headers: {
           Authorization: req.headers["authorization"],
-          "X-Reference-Id": "dd4d9428-500b-49f0-95e5-d0e31447679f",
+          "X-Reference-Id": req.headers["x-reference-id"],
           "X-Target-Environment": "sandbox",
-          "Ocp-Apim-Subscription-Key": "66fc1b57038248848486712100f1784b",
+          "Ocp-Apim-Subscription-Key": req.headers["ocp-apim-subscription-key"],
           "Content-Type": "application/json",
         },
       }
     );
     res.json(response.data);
   } catch (err) {
-    console.log("Error: ", err.message);
-    res.status(500).json({ error: err.response?.data || err.message });
+    console.log("Error Details:", {
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      data: err.response?.data,
+      headers: err.response?.headers,
+    });
+    res.status(err.response?.status || 500).json({
+      error: err.response?.data || err.message,
+      details: err.response?.data,
+    });
   }
 });
 
