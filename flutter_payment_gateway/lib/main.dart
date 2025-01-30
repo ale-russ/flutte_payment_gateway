@@ -110,8 +110,8 @@ class _MyHomePageState extends State<MyHomePage> {
 
   // request api success token
   Future<String?> getAccessToken() async {
-    // final String url = "$_baseUrl/collection/token/";
-    final String url = "http://localhost:3000/get-token";
+    final String url = "$_baseUrl/collection/token/";
+    // final String url = "http://localhost:3000/get-token";
 
     final String userName = PassKeys.RFERENCE_ID;
     final String password = PassKeys.API_KEY;
@@ -270,7 +270,7 @@ class _MyHomePageState extends State<MyHomePage> {
             _isProcessing
                 ? CircularProgressIndicator()
                 : ElevatedButton(
-                    onPressed: getAccessToken,
+                    onPressed: requestPayment,
                     // onPressed: checkInternetWeb,
                     child: Text('Pay Now'),
                   ),
