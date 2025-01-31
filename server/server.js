@@ -64,7 +64,7 @@ app.post("/request-payment", async (req, res) => {
   try {
     // Log the request details for debugging
     console.log("Request Headers:", req.headers);
-    console.log("Request Body:", body);
+    console.log("Request Body:", req.body);
 
     const response = await axios.post(
       `${MOMO_BASE_URL}/collection/v1_0/requesttopay`,
@@ -80,6 +80,37 @@ app.post("/request-payment", async (req, res) => {
       }
     );
     res.json(response.data);
+  } catch (err) {
+    console.log("Error Details:", {
+      status: err.response?.status,
+      statusText: err.response?.statusText,
+      data: err.response?.data,
+      headers: err.response?.headers,
+    });
+    res.status(err.response?.status || 500).json({
+      error: err.response?.data || err.message,
+      details: err.response?.data,
+    });
+  }
+});
+
+app.get("/get-payment-status", async (req, res) => {
+  const { xReferenceId, token, subscription } = req.body;
+  console.log("Body: ", req.body);
+  try {
+    const response = await axios.get(
+      `https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay/${xReferenceId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Target-Environment": "sandbox",
+          "Ocp-Apim-Subscription-Key": subscription,
+        },
+      }
+    );
+
+    console.log("Response: ", response.body);
+    return response.body;
   } catch (err) {
     console.log("Error Details:", {
       status: err.response?.status,
