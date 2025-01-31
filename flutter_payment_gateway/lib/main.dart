@@ -47,8 +47,6 @@ class _MyHomePageState extends State<MyHomePage> {
   // ignore: non_constant_identifier_names
   String? _apiKey = "";
 
-  //create reference id
-
   // Create API User
   Future<dynamic> createApiUser() async {
     final url = '$_baseUrl/v1_0/apiuser';
@@ -126,12 +124,13 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<String?> getAccessToken() async {
     final String url = "$_baseUrl/collection/token/";
     // final String url = "http://localhost:3000/get-token";
+    await getUserAPIKey();
 
     final String userName = reference;
     final String password = _apiKey!;
     final String credentials = '$userName:$password';
 
-    log("credentials: $credentials");
+    log("CREDENTIALS: $password ");
     try {
       final response = await http.post(Uri.parse(url), headers: {
         'Ocp-Apim-Subscription-Key': PassKeys.PRIMARY_KEY,
