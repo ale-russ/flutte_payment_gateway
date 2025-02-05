@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_payment_gateway/models/Payment_Model.dart';
+import 'package:flutter_payment_gateway/payment_details.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 import 'package:flutter_payment_gateway/Keys.dart';
 
@@ -19,7 +22,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
         useMaterial3: true,
       ),
       home: const MyHomePage(),
@@ -44,8 +47,19 @@ class _MyHomePageState extends State<MyHomePage> {
   final _baseUrl = "https://sandbox.momodeveloper.mtn.com";
   final reference = "98886195-2446-4551-86d2-5818a8443e76";
 
+  PaymentResponse? paymentResponse;
+
   // ignore: non_constant_identifier_names
   String? _apiKey = "";
+
+  final uuid = Uuid();
+
+  String generateReferenceId(String phone) {
+    final String referenceId = uuid.v4();
+    log("uuid: $referenceId");
+    // phone + DateTime.now().millisecondsSinceEpoch.toString();
+    return referenceId;
+  }
 
   // Create API User
   Future<dynamic> createApiUser() async {
@@ -92,9 +106,9 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  Future<String?> getUserAPIKey() async {
+  Future<void> getUserAPIKey() async {
     log("baseUrl: $_baseUrl");
-    final url = "$_baseUrl/v1_0/apiuser/$reference/apiKey";
+    // final url = "$_baseUrl/v1_0/apiuser/$reference/apiKey";
     final urll =
         "https://sandbox.momodeveloper.mtn.com/v1_0/apiuser/$reference/apikey";
     try {
@@ -103,20 +117,20 @@ class _MyHomePageState extends State<MyHomePage> {
       });
       log("Response API KEY: ${response.body}");
       final newKey = jsonDecode(response.body);
-
       setState(() {
         _apiKey = newKey['apiKey'];
       });
+      log("newKey: $_apiKey");
 
-      log("API KEY: $_apiKey");
-      return newKey;
+      // return newKey;
     } catch (err) {
+      log("Error: $err");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Failed to fetch API key"),
         ),
       );
-      return null;
+      // return null;
     }
   }
 
@@ -149,7 +163,7 @@ class _MyHomePageState extends State<MyHomePage> {
         setState(() {
           _isProcessing = false;
         });
-        log('accessToken: $data');
+
         return data['access_token'];
       } else {
         log("Failed to obtain token: ${response.body}");
@@ -208,7 +222,8 @@ class _MyHomePageState extends State<MyHomePage> {
         Uri.parse(url),
         headers: {
           "Authorization": 'Bearer $token',
-          "X-Reference-Id": reference,
+          // "X-Reference-Id": '445bd091-e9c1-4ce6-b55d-4fef774326ad',
+          "X-Reference-Id": generateReferenceId(phoneNumber).toString(),
           "X-Target-Environment": 'sandbox',
           'Ocp-Apim-Subscription-Key': PassKeys.PRIMARY_KEY,
           'Content-Type': "application/json",
@@ -225,14 +240,15 @@ class _MyHomePageState extends State<MyHomePage> {
           "payeeNote": "Thank you for using our service",
         }),
       );
+      log("Payment request failed: ${response.statusCode}");
       setState(() {
         _isProcessing = false;
       });
-      if (response.statusCode == 200) {
+      /* if (response.statusCode == 200) {
         log("Payment request successfully");
       } else {
         log("Payment request failed: ${response.body}");
-      }
+      } */
     } on Exception catch (err) {
       log("Error: $err");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -255,7 +271,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       final String url =
-          "https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay/$reference";
+          "https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay/ae0c583d-ac4d-440b-bfe2-c81f7c14a647";
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -267,6 +283,12 @@ class _MyHomePageState extends State<MyHomePage> {
       log("Response: ${response.body}");
       if (response.statusCode == 200) {
         log("Payment status: ${response.body}");
+        final res = PaymentResponse.fromJson(jsonDecode(response.body));
+        log("RES: $res");
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => PaymentDetails(payment: res)));
       } else {
         log("Failed ot check payment status: ${response.body}");
       }
@@ -287,13 +309,6 @@ class _MyHomePageState extends State<MyHomePage> {
     _amountController.dispose();
     super.dispose();
   }
-
-  Widget paymentInformation = Column(
-    children: [
-      Text("Payment Information"),
-      SizedBox(height: 20),
-    ],
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +336,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 ? CircularProgressIndicator()
                 : ElevatedButton(
                     onPressed: requestPayment,
-                    // onPressed: checkInternetWeb,
                     child: Text('Pay Now'),
                   ),
             const SizedBox(height: 40),
@@ -331,8 +345,6 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () => checkPaymentStatus(reference),
                     child: Text('Payment Status'),
                   ),
-            const SizedBox(height: 40),
-            paymentInformation
           ],
         ),
       ),
