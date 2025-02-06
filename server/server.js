@@ -4,7 +4,12 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
+const authRoutes = require("./routes/authRoutes");
+const momoRoutes = require("./routes/momoRoutes");
+const connectDB = require("./config/db");
+
 dotenv.config();
+connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,12 +19,7 @@ app.use(cors());
 app.use(express.json()); // This ensures req.body is properly parsed
 app.use(express.urlencoded()); // Support form-urlencoded
 
-// Momo API base url
-const MOMO_BASE_URL = "https://sandbox.momodeveloper.mtn.com";
-const mongoUrl = process.env.MONGO_URL;
-
-const momoRoutes = require("./routes/momoRoutes");
-
+app.use("/api/auth", authRoutes);
 app.use("/api/momo", momoRoutes);
 
 // Generate Access token from MOMO API
@@ -134,10 +134,10 @@ app.use("/api/momo", momoRoutes);
 
 // console.log("url: ", mongoUrl);
 
-mongoose
-  .connect(mongoUrl)
-  .then(() => console.log("CONNECTED TO MONGODB"))
-  .catch((err) => console.log("MONGODB CONNECTION ERROR: ", err));
+// mongoose
+//   .connect(mongoUrl)
+//   .then(() => console.log("CONNECTED TO MONGODB"))
+//   .catch((err) => console.log("MONGODB CONNECTION ERROR: ", err));
 
 // Start server
 app.listen(PORT, () => {

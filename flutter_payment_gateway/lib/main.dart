@@ -223,7 +223,7 @@ class _MyHomePageState extends State<MyHomePage> {
         headers: {
           "Authorization": 'Bearer $token',
           // "X-Reference-Id": '445bd091-e9c1-4ce6-b55d-4fef774326ad',
-          "X-Reference-Id": generateReferenceId(phoneNumber).toString(),
+          "X-Reference-Id": '65549511-a2f3-481a-a134-a03e6467b172',
           "X-Target-Environment": 'sandbox',
           'Ocp-Apim-Subscription-Key': PassKeys.PRIMARY_KEY,
           'Content-Type': "application/json",
@@ -271,7 +271,7 @@ class _MyHomePageState extends State<MyHomePage> {
       }
 
       final String url =
-          "https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay/ae0c583d-ac4d-440b-bfe2-c81f7c14a647";
+          "https://sandbox.momodeveloper.mtn.com/collection/v1_0/requesttopay/65549511-a2f3-481a-a134-a03e6467b172";
       final response = await http.get(
         Uri.parse(url),
         headers: {
