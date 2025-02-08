@@ -8,6 +8,8 @@ const authRoutes = require("./routes/authRoutes");
 const momoRoutes = require("./routes/momoRoutes");
 const connectDB = require("./config/db");
 
+require("./cron");
+
 dotenv.config();
 connectDB();
 

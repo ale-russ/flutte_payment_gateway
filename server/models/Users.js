@@ -11,6 +11,7 @@ const UserSChema = new mongoose.Schema({
     referenceId: String,
     amount: Number,
     currency: String,
+    subscription_key: String,
     paymentDate: Date,
   },
 });
