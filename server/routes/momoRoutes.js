@@ -44,14 +44,12 @@ router.post("/subscribe", authMiddleWare, async (req, res) => {
 });
 
 // Request Payment
-router.post("/request-payment/:userId", async (req, res) => {
+router.post("/request-payment", async (req, res) => {
   try {
-    const userId = req.params.userId;
+    const { phoneNumber, userId, amount, currency } = req.body;
     console.log("userId: ", userId);
     let user = await User.findById(userId);
-    if (!user) res.status(400).json({ message: "No User Found" });
-
-    const { phoneNumber, amount, currency } = req.body;
+    if (!user) return res.status(400).json({ message: "User Not Found" });
 
     const xReferenceId = generateReferenceId();
 
@@ -99,21 +97,33 @@ router.post("/request-payment/:userId", async (req, res) => {
       user.subscriptionHistory.push({ ...user.subscription });
     }
 
-    user = await User.findByIdAndUpdate(userId, {
-      $set: {
-        subscription: {
-          status: "PENDING",
-          referenceId: xReferenceId,
-          amount,
-          currency,
-          subscription_key: apiKey,
-          paymentDate: new Date(),
-          nextPaymentDate: new Date(
-            new Date().setDate(new Date().getDate() + 30)
-          ),
-        },
-      },
-    });
+    // user = await User.findByIdAndUpdate(userId, {
+    //   $set: {
+    //     subscription: {
+    //       status: "PENDING",
+    //       referenceId: xReferenceId,
+    //       amount,
+    //       currency,
+    //       subscription_key: apiKey,
+    //       paymentDate: new Date(),
+    //       nextPaymentDate: new Date(
+    //         new Date().setDate(new Date().getDate() + 30)
+    //       ),
+    //     },
+    //   },
+    // });
+
+    //update the active subscription
+    user.subscription = {
+      status: "PENDING",
+      referenceId: xReferenceId,
+      amount,
+      currency,
+      subscription_key: apiKey,
+      paymentDate: new Date(),
+    };
+
+    await user.save();
 
     console.log("user: ", user);
 
