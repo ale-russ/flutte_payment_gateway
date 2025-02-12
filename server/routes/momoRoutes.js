@@ -20,9 +20,6 @@ const {
 const MOMO_URL = process.env.MOMO_BASE_URL;
 const MOMO_PRIMARY_KEY = process.env.MOMO_PRIMARY_KEY;
 const MOMO_ENV = process.env.MOMO_ENV;
-// const NEW_REFERENCE_ID = "20c91c70-6426-434b-bc29-02d393788c0a";
-
-// const generateReferenceId = () => uuidv4();
 
 // Register a new subscription;
 router.post("/subscribe", authMiddleWare, async (req, res) => {
@@ -46,85 +43,15 @@ router.post("/subscribe", authMiddleWare, async (req, res) => {
   }
 });
 
-// Create a new API USER (used only in sandbox)
-// async function createApiUser(xReferenceId) {
-//   try {
-//     const response = await axios.post(
-//       `${MOMO_URL}/v1_0/apiuser`,
-//       { providerCallbackHost: "String" },
-//       {
-//         headers: {
-//           "Ocp-Apim-Subscription-Key": MOMO_PRIMARY_KEY,
-//           "Content-Type": "application/json",
-//           "X-Reference-Id": xReferenceId,
-//         },
-//       }
-//     );
-
-//     return response.data;
-//   } catch (err) {
-//     console.error(
-//       "Failed To Create API USER:",
-//       err.response?.data || err.message
-//     );
-//     return res.status(500).json({ message: "Internal Server Error" });
-//   }
-// }
-
-// // Create API KEY (used only in sandbox)
-// async function createAPIKey(xReferenceId) {
-//   try {
-//     const response = await axios.post(
-//       `${MOMO_URL}/v1_0/apiuser/${xReferenceId}/apikey`,
-//       {},
-//       {
-//         headers: {
-//           "Ocp-Apim-Subscription-Key": MOMO_PRIMARY_KEY,
-//         },
-//       }
-//     );
-
-//     return response.data;
-//   } catch (err) {
-//     console.error(
-//       "Failed to obtain MoMo access token:",
-//       err.response?.data || err.message
-//     );
-//     // console.log("Error: ", err);
-//     return null;
-//   }
-// }
-
-// // Get MOMO Access Token
-// async function getAccessToken(xReferenceId, apiKey) {
-//   const auth = Buffer.from(`${xReferenceId}:${apiKey}`).toString("base64");
-//   try {
-//     const response = await axios.post(
-//       `${MOMO_URL}/collection/token/`,
-//       {},
-//       {
-//         headers: {
-//           Authorization: `Basic ${auth}`,
-//           "Ocp-Apim-Subscription-Key": MOMO_PRIMARY_KEY,
-//           "Content-Type": "application/json",
-//         },
-//       }
-//     );
-
-//     return response.data.access_token;
-//   } catch (err) {
-//     console.error(
-//       "Failed to obtain MoMo access token:",
-//       err.response?.data || err.message
-//     );
-//     return null;
-//   }
-// }
-
 // Request Payment
-router.post("/request-payment", async (req, res) => {
+router.post("/request-payment/:userId", async (req, res) => {
   try {
-    const { phoneNumber, userId, amount, currency } = req.body;
+    const userId = req.params.userId;
+    console.log("userId: ", userId);
+    let user = await User.findById(userId);
+    if (!user) res.status(400).json({ message: "No User Found" });
+
+    const { phoneNumber, amount, currency } = req.body;
 
     const xReferenceId = generateReferenceId();
 
@@ -165,9 +92,14 @@ router.post("/request-payment", async (req, res) => {
         },
       }
     );
-    console.log("REsponse: ", response?.status, " ", response?.statusText);
 
-    const user = await User.findByIdAndUpdate(userId, {
+    console.log("user.subscrpition: ", user.subscription?.referenceId);
+
+    if (user.subscription.referenceId) {
+      user.subscriptionHistory.push({ ...user.subscription });
+    }
+
+    user = await User.findByIdAndUpdate(userId, {
       $set: {
         subscription: {
           status: "PENDING",
@@ -176,6 +108,9 @@ router.post("/request-payment", async (req, res) => {
           currency,
           subscription_key: apiKey,
           paymentDate: new Date(),
+          nextPaymentDate: new Date(
+            new Date().setDate(new Date().getDate() + 30)
+          ),
         },
       },
     });
