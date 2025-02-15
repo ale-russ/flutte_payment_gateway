@@ -25,6 +25,13 @@ const MOMO_ENV = process.env.MOMO_ENV;
 router.post("/subscribe", authMiddleWare, async (req, res) => {
   try {
     const { phone, amount, endDate } = req.body;
+    if (!phone || !amount || !endDate)
+      return res.status(400).json({ error: "Missing required fields" });
+
+    // Check validation for amount
+    if (amount <= 0)
+      return res.status(400).json({ error: "Amount must be greater than 0" });
+
     const referenceId = generateReferenceId();
 
     const newSubscription = new Subscription({
@@ -47,9 +54,20 @@ router.post("/subscribe", authMiddleWare, async (req, res) => {
 router.post("/request-payment", async (req, res) => {
   try {
     const { phoneNumber, userId, amount, currency } = req.body;
-    console.log("userId: ", userId);
+
+    if (!phoneNumber || !userId || !amount || !currency)
+      return res.status(400).json({ error: "Missing required Fileds" });
+
+    // Check validation for amount
+    if (amount <= 0)
+      return res.status(400).json({ error: "Amount must be greater than 0" });
+
     let user = await User.findById(userId);
     if (!user) return res.status(400).json({ message: "User Not Found" });
+
+    // Check if user has pending payment
+    if (user?.subscription?.status === "PENDING")
+      return res.status(400).json({ error: "User has Pending Payment" });
 
     const xReferenceId = generateReferenceId();
 
@@ -60,15 +78,23 @@ router.post("/request-payment", async (req, res) => {
     console.log("apiKey: ", apiKey);
 
     if (!apiKey)
-      return res
-        .statusCode(500)
-        .json({ message: "Failed To Retrieve API-KEY" });
+      return res.status(500).json({ message: "Failed To Retrieve API-KEY" });
 
     const token = await getAccessToken(xReferenceId, apiKey);
     if (!token)
       return res.status(500).json({ error: "Failed To Retrieve Access Token" });
 
     console.log("Token: ", token);
+
+    const header = {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Reference-Id": xReferenceId,
+        "X-Target-Environment": MOMO_ENV,
+        "Ocp-Apim-Subscription-Key": MOMO_PRIMARY_KEY,
+        "Content-Type": "application/json",
+      },
+    };
 
     const response = await axios.post(
       `${MOMO_URL}/collection/v1_0/requesttopay`,
@@ -80,38 +106,14 @@ router.post("/request-payment", async (req, res) => {
         payerMessage: "Subscription Payment",
         payeeNote: "Thank you for using our services",
       },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "X-Reference-Id": xReferenceId,
-          "X-Target-Environment": MOMO_ENV,
-          "Ocp-Apim-Subscription-Key": MOMO_PRIMARY_KEY,
-          "Content-Type": "application/json",
-        },
-      }
+      header
     );
 
-    console.log("user.subscrpition: ", user.subscription?.referenceId);
+    console.log("user.subscrpition: ", user?.subscription?.referenceId);
 
-    if (user.subscription.referenceId) {
-      user.subscriptionHistory.push({ ...user.subscription });
+    if (user?.subscription.referenceId) {
+      user?.subscriptionHistory.push({ ...user?.subscription });
     }
-
-    // user = await User.findByIdAndUpdate(userId, {
-    //   $set: {
-    //     subscription: {
-    //       status: "PENDING",
-    //       referenceId: xReferenceId,
-    //       amount,
-    //       currency,
-    //       subscription_key: apiKey,
-    //       paymentDate: new Date(),
-    //       nextPaymentDate: new Date(
-    //         new Date().setDate(new Date().getDate() + 30)
-    //       ),
-    //     },
-    //   },
-    // });
 
     //update the active subscription
     user.subscription = {
@@ -148,11 +150,16 @@ router.get("/payment-status/:userId", async (req, res) => {
 
     console.log("USER: ", user);
 
-    if (!user || !user.subscription.referenceId)
+    if (!user) return res.status(400).json({ error: "No User Found" });
+
+    if (!user.subscription.referenceId)
       return res.status(400).json({ error: "No Payment Reference Found" });
 
     const referenceId = user.subscription.referenceId;
     const { apiKey } = await createAPIKey(referenceId);
+
+    if (!apiKey)
+      return res.status(400).json({ error: "Unable To Fetch API KEY" });
 
     const token = await getAccessToken(referenceId, apiKey);
 
