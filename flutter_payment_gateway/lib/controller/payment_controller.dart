@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:flutter_payment_gateway/models/user_model.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
@@ -9,17 +10,19 @@ import '../models/Payment_Model.dart';
 
 class PaymentController {
   final _baseUrl = "https://sandbox.momodeveloper.mtn.com";
+  User? user;
 
   final uuid = Uuid();
-  String generateReferenceId(String phone) {
+  String generateReferenceId() {
     final String referenceId = uuid.v4();
     log("uuid: $referenceId");
-    // phone + DateTime.now().millisecondsSinceEpoch.toString();
+
     return referenceId;
   }
 
   // Create API User
-  Future<dynamic> createApiUser(String reference) async {
+  Future<dynamic> createApiUser() async {
+    String reference = generateReferenceId();
     final url = '$_baseUrl/v1_0/apiuser';
     log("in create api user method");
     try {
@@ -121,8 +124,9 @@ class PaymentController {
     if (phoneNumber.isEmpty || amount.isEmpty) {
       return;
     }
-    /* await createApiUser();
-    await getCratedUserById(); */
+
+    await createApiUser();
+    await getCratedUserById(user!.id);
 
     final String? token = await getAccessToken(reference, apiKey);
     log("AccessToken: $token");
@@ -139,7 +143,7 @@ class PaymentController {
         headers: {
           "Authorization": 'Bearer $token',
           // "X-Reference-Id": '445bd091-e9c1-4ce6-b55d-4fef774326ad',
-          "X-Reference-Id": generateReferenceId(phoneNumber).toString(),
+          "X-Reference-Id": generateReferenceId().toString(),
           "X-Target-Environment": 'sandbox',
           'Ocp-Apim-Subscription-Key': PassKeys.PRIMARY_KEY,
           'Content-Type': "application/json",
