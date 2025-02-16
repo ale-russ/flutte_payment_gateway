@@ -5,9 +5,11 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   phoneNumber: { type: String, required: true, unique: true },
+  apiUserId: { type: String, unique: true },
   subscription: {
     status: { type: String, default: "inactive" }, // active/inactive/pending
     referenceId: String,
+    paymentReferenceId: String,
     amount: Number,
     currency: String,
     subscription_key: String,

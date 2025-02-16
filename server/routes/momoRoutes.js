@@ -15,6 +15,7 @@ const {
   createApiUser,
   createAPIKey,
   getAccessToken,
+  getApiUser,
 } = require("../utils/momoUtils");
 
 const MOMO_URL = process.env.MOMO_BASE_URL;
@@ -78,7 +79,6 @@ router.post("/request-payment", async (req, res) => {
     if (user?.subscription?.status === "PENDING")
       return res.status(400).json({ error: "User has Pending Payment" });
 
-    // const xReferenceId = generateReferenceId();
     let xReferenceId;
     let refernceIdExists;
     do {
@@ -88,22 +88,26 @@ router.post("/request-payment", async (req, res) => {
       });
     } while (refernceIdExists);
 
-    const storedApiKey = user.subscription?.subscription_key;
-    const storedApiUser = process.env.MOMO_API_USER;
+    let storedApiKey;
+
+    if (!user.subscription?.subscription_key) {
+      console.log("No subscription: userApiKey: ", user.apiUserId);
+      await createApiUser(user.apiUserId);
+      const { apiKey } = await createAPIKey(user.apiUserId);
+      storedApiKey = apiKey;
+    } else {
+      storedApiKey = user.subscription?.subscription_key;
+    }
+
+    const storedApiUser = user.apiUserId;
+
+    console.log("sotredApiKey: ", storedApiKey);
+    console.log("storedApiUser: ", storedApiUser);
 
     if (!storedApiKey || !storedApiUser)
       return res.status(500).json({ message: "Missing MOMO API Credentials" });
 
-    // await createApiUser(xReferenceId);
-
-    // const { apiKey } = await createAPIKey(xReferenceId);
-
-    // console.log("apiKey: ", apiKey);
-
-    // if (!apiKey)
-    //   return res.status(500).json({ message: "Failed To Retrieve API-KEY" });
-
-    const token = await getAccessToken(xReferenceId, storedApiKey);
+    const token = await getAccessToken(storedApiUser, storedApiKey);
     if (!token)
       return res.status(500).json({ error: "Failed To Retrieve Access Token" });
 
@@ -143,10 +147,11 @@ router.post("/request-payment", async (req, res) => {
     //update the active subscription
     user.subscription = {
       status: "PENDING",
-      referenceId: xReferenceId,
+      referenceId: storedApiUser,
       amount,
       currency,
-      subscription_key: apiKey,
+      paymentReferenceId: xReferenceId,
+      subscription_key: storedApiKey,
       paymentDate: new Date(),
     };
 
@@ -181,26 +186,26 @@ router.get("/payment-status/:userId", async (req, res) => {
       return res.status(400).json({ error: "No Payment Reference Found" });
 
     const referenceId = user.subscription.referenceId;
-    // const { apiKey } = await createAPIKey(referenceId);
     const apiKey = user.subscription.subscription_key;
+
+    // Get the payment reference ID from the externalId used in request-payment
+    const paymentReferenceId = user.subscription.paymentReferenceId; // We need to store this during payment request
 
     if (!apiKey)
       return res.status(400).json({ error: "Unable To Fetch API KEY" });
 
     const token = await getAccessToken(referenceId, apiKey);
 
-    console.log("ReferenceId: ", referenceId);
-
     if (!token)
       return res.status(500).json({ error: "Failed To Get Access Token" });
 
     const response = await axios.get(
-      `${MOMO_URL}/collection/v1_0/requesttopay/${referenceId}`,
+      `${MOMO_URL}/collection/v1_0/requesttopay/${paymentReferenceId}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,
-          "X-Target-Environment": MOMO_ENV,
-          "Ocp-Apim-Subscription-Key": MOMO_PRIMARY_KEY,
+          "X-Target-Environment": process.env.MOMO_ENV,
+          "Ocp-Apim-Subscription-Key": process.env.MOMO_PRIMARY_KEY,
         },
       }
     );
@@ -214,6 +219,7 @@ router.get("/payment-status/:userId", async (req, res) => {
     }
     res.json(response.data);
   } catch (err) {
+    console.log("ERROR: ", err.response?.data);
     res.status(500).json({ error: err.response?.data || err.message });
   }
 });

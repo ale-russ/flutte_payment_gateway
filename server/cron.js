@@ -19,12 +19,14 @@ cron.schedule("* * * * *", async () => {
     const today = new Date();
     const users = await User.find({
       "subscription.status": "active",
-      "subscription.nextPaymentDay": { $lte: today },
+      // "subscription.nextPaymentDay": { $lte: today },
     });
     console.log("User: ", users);
     for (const user of users) {
+      console.log("user: ", user);
       const { _id, subscription } = user;
-      const referenceId = generateReferenceId();
+      // const referenceId = generateReferenceId();
+      const referenceId = user.apiUserId;
       const token = await getAccessToken(
         subscription.referenceId,
         subscription.subscription_key
@@ -32,35 +34,18 @@ cron.schedule("* * * * *", async () => {
 
       if (!token) {
         console.error("Failed to get access token for user: ", _id);
-        // continue;
-        return;
+        continue;
+        // return;
       }
 
       // Send payment request to MoMo API
+      // console.log("serverUrl: ", process.env.SERVER_BASE_URL);
+      const paymentRequestUrl = `${process.env.SERVER_BASE_URL}/api/momo/request-payment`;
+      console.log(`Payment request URL: ${paymentRequestUrl}`); //
       try {
-        // const response = await axios.post(
-        //   `${MOMO_URL}/collection/v1_0/requesttopay`,
-        //   {
-        //     amount: subscription.amount.toString(),
-        //     currency: subscription.currency,
-        //     externalId: referenceId,
-        //     payer: { partyIdType: "MSISDN", partyId: user.phoneNumber },
-        //     payerMessage: "Subscription Renewal",
-        //     payeeNote: "Thank you for your continued support",
-        //   },
-        //   {
-        //     headers: {
-        //       Authorization: `Bearer ${token}`,
-        //       "X-Reference-Id": referenceId,
-        //       "X-Target-Environment": MOMO_ENV,
-        //       "Ocp-Apim-Subscription-Key": MOMO_PRIMARY_KEY,
-        //       "Content-Type": "application/json",
-        //     },
-        //   }
-        // );
-
         const response = await axios.post(
-          `${SERVER_BASE_URL}/api/momo/payment-request`,
+          // `${process.env.SERVER_BASE_URL}/api/momo/request-payment`,
+          paymentRequestUrl,
           {
             phoneNumber: user.phoneNumber,
             userId: _id,

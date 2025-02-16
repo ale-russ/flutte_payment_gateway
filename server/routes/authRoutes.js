@@ -3,6 +3,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/Users");
+const {
+  generateReferenceId,
+  createApiUser,
+  getApiUser,
+} = require("../utils/momoUtils");
 
 const router = express.Router();
 
@@ -20,11 +25,22 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const apiUserId = generateReferenceId();
+    // const apiResponse = await createApiUser(apiUserId);
+    // console.log("APIRESPONSE: ", apiResponse);
+    // if (apiResponse !== 201)
+    //   return res
+    //     .status(apiResponse)
+    //     .json({ error: "Falied To Create Api User" });
+
+    // const apiUser = getApiUser(apiUserId);
+    // console.log("API USER ID: ", apiUser);
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
       phoneNumber,
+      apiUserId: apiUserId,
     });
 
     await newUser.save();
@@ -57,6 +73,7 @@ router.post("/login", async (req, res) => {
         name: user.name,
         email: user.email,
         phoneNumber: user.phoneNumber,
+        apiUserId: user.apiUserId,
       },
     });
   } catch (err) {
