@@ -53,7 +53,16 @@ router.post("/subscribe", authMiddleWare, async (req, res) => {
 // Request Payment
 router.post("/request-payment", async (req, res) => {
   try {
-    const { phoneNumber, userId, amount, currency } = req.body;
+    const {
+      phoneNumber,
+      userId,
+      amount,
+      currency,
+      externalId,
+      payer,
+      payerMessage,
+      payeeNote,
+    } = req.body;
 
     if (!phoneNumber || !userId || !amount || !currency)
       return res.status(400).json({ error: "Missing required Fileds" });
@@ -69,18 +78,32 @@ router.post("/request-payment", async (req, res) => {
     if (user?.subscription?.status === "PENDING")
       return res.status(400).json({ error: "User has Pending Payment" });
 
-    const xReferenceId = generateReferenceId();
+    // const xReferenceId = generateReferenceId();
+    let xReferenceId;
+    let refernceIdExists;
+    do {
+      xReferenceId = generateReferenceId();
+      refernceIdExists = await User.findOne({
+        "subscription.referenceId": xReferenceId,
+      });
+    } while (refernceIdExists);
 
-    await createApiUser(xReferenceId);
+    const storedApiKey = user.subscription?.subscription_key;
+    const storedApiUser = process.env.MOMO_API_USER;
 
-    const { apiKey } = await createAPIKey(xReferenceId);
+    if (!storedApiKey || !storedApiUser)
+      return res.status(500).json({ message: "Missing MOMO API Credentials" });
 
-    console.log("apiKey: ", apiKey);
+    // await createApiUser(xReferenceId);
 
-    if (!apiKey)
-      return res.status(500).json({ message: "Failed To Retrieve API-KEY" });
+    // const { apiKey } = await createAPIKey(xReferenceId);
 
-    const token = await getAccessToken(xReferenceId, apiKey);
+    // console.log("apiKey: ", apiKey);
+
+    // if (!apiKey)
+    //   return res.status(500).json({ message: "Failed To Retrieve API-KEY" });
+
+    const token = await getAccessToken(xReferenceId, storedApiKey);
     if (!token)
       return res.status(500).json({ error: "Failed To Retrieve Access Token" });
 
@@ -103,13 +126,15 @@ router.post("/request-payment", async (req, res) => {
         currency: currency,
         externalId: xReferenceId,
         payer: { partyIdType: "MSISDN", partyId: phoneNumber },
-        payerMessage: "Subscription Payment",
-        payeeNote: "Thank you for using our services",
+        payerMessage: payerMessage ?? "Subscription Payment",
+        payeeNote: payeeNote ?? "Thank you for using our services",
       },
       header
     );
 
     console.log("user.subscrpition: ", user?.subscription?.referenceId);
+
+    if (!user.subscriptionHistory) user.subscriptionHistory = [];
 
     if (user?.subscription.referenceId) {
       user?.subscriptionHistory.push({ ...user?.subscription });
@@ -156,7 +181,8 @@ router.get("/payment-status/:userId", async (req, res) => {
       return res.status(400).json({ error: "No Payment Reference Found" });
 
     const referenceId = user.subscription.referenceId;
-    const { apiKey } = await createAPIKey(referenceId);
+    // const { apiKey } = await createAPIKey(referenceId);
+    const apiKey = user.subscription.subscription_key;
 
     if (!apiKey)
       return res.status(400).json({ error: "Unable To Fetch API KEY" });
