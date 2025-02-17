@@ -19,13 +19,12 @@ cron.schedule("* * * * *", async () => {
     const today = new Date();
     const users = await User.find({
       "subscription.status": "active",
-      // "subscription.nextPaymentDay": { $lte: today },
+      "subscription.nextPaymentDay": { $lte: today },
     });
     console.log("User: ", users);
     for (const user of users) {
       console.log("user: ", user);
       const { _id, subscription } = user;
-      // const referenceId = generateReferenceId();
       const referenceId = user.apiUserId;
       const token = await getAccessToken(
         subscription.referenceId,

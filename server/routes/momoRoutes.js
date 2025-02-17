@@ -153,6 +153,7 @@ router.post("/request-payment", async (req, res) => {
       paymentReferenceId: xReferenceId,
       subscription_key: storedApiKey,
       paymentDate: new Date(),
+      nextPaymentDate: new Date(new Date().setDate(new Date().getDate() + 30)),
     };
 
     await user.save();
